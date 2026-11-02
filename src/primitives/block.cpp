@@ -5,12 +5,24 @@
 
 #include <primitives/block.h>
 
+#include <crypto/yespower-hash.h>
 #include <hash.h>
+#include <streams.h>
 #include <tinyformat.h>
+#include <version.h>
 
 uint256 CBlockHeader::GetHash() const
 {
     return SerializeHash(*this);
+}
+
+uint256 CBlockHeader::GetPoWHash() const
+{
+    uint256 thash;
+    CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+    ss << *this;
+    yespower_hash((const char*)ss.data(), ss.size(), (char*)&thash);
+    return thash;
 }
 
 std::string CBlock::ToString() const

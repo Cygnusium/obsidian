@@ -1477,8 +1477,8 @@ CAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams)
     if (halvings >= 64)
         return 0;
 
-    CAmount nSubsidy = 50 * COIN;
-    // Subsidy is cut in half every 210,000 blocks which will occur approximately every 4 years.
+    CAmount nSubsidy = 450 * COIN;
+    // Subsidy is cut in half every 50,000 blocks to reach 45,000,000 OSD total supply.
     nSubsidy >>= halvings;
     return nSubsidy;
 }
@@ -2843,6 +2843,14 @@ bool Chainstate::ActivateBestChainStep(BlockValidationState& state, CBlockIndex*
     const CBlockIndex* pindexOldTip = m_chain.Tip();
     const CBlockIndex* pindexFork = m_chain.FindFork(pindexMostWork);
 
+    // 51% Attack Defense: Reject deep chain reorganizations exceeding 100 blocks
+    static const int MAX_REORG_DEPTH = 100;
+    if (pindexOldTip && pindexFork && (pindexOldTip->nHeight - pindexFork->nHeight > MAX_REORG_DEPTH)) {
+        LogPrintf("WARNING: 51% attack mitigation triggered: Reorganization of %d blocks rejected (max allowed %d)\n",
+                  pindexOldTip->nHeight - pindexFork->nHeight, MAX_REORG_DEPTH);
+        return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "reorg-too-deep", "reorganization exceeds maximum allowed depth");
+    }
+
     // Disconnect active blocks which are no longer in the best chain.
     bool fBlocksDisconnected = false;
     DisconnectedBlockTransactions disconnectpool;
@@ -3313,7 +3321,7 @@ void Chainstate::ReceivedBlockTransactions(const CBlock& block, CBlockIndex* pin
 static bool CheckBlockHeader(const CBlockHeader& block, BlockValidationState& state, const Consensus::Params& consensusParams, bool fCheckPOW = true)
 {
     // Check proof of work matches claimed amount
-    if (fCheckPOW && !CheckProofOfWork(block.GetHash(), block.nBits, consensusParams))
+    if (fCheckPOW && !CheckProofOfWork(block.GetPoWHash(), block.nBits, consensusParams))
         return state.Invalid(BlockValidationResult::BLOCK_INVALID_HEADER, "high-hash", "proof of work failed");
 
     return true;
@@ -3435,7 +3443,7 @@ std::vector<unsigned char> ChainstateManager::GenerateCoinbaseCommitment(CBlock&
 bool HasValidProofOfWork(const std::vector<CBlockHeader>& headers, const Consensus::Params& consensusParams)
 {
     return std::all_of(headers.cbegin(), headers.cend(),
-            [&](const auto& header) { return CheckProofOfWork(header.GetHash(), header.nBits, consensusParams);});
+            [&](const auto& header) { return CheckProofOfWork(header.GetPoWHash(), header.nBits, consensusParams);});
 }
 
 arith_uint256 CalculateHeadersWork(const std::vector<CBlockHeader>& headers)

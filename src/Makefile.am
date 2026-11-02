@@ -498,7 +498,8 @@ libbitcoin_wallet_tool_a_SOURCES = \
   $(BITCOIN_CORE_H)
 
 # crypto primitives library
-crypto_libbitcoin_crypto_base_la_CPPFLAGS = $(AM_CPPFLAGS)
+crypto_libbitcoin_crypto_base_la_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/crypto/yespower
+crypto_libbitcoin_crypto_base_la_CFLAGS = $(AM_CFLAGS) $(PIE_FLAGS) -static
 
 # Specify -static in both CXXFLAGS and LDFLAGS so libtool will only build a
 # static version of this library. We don't need a dynamic version, and a dynamic
@@ -536,7 +537,15 @@ crypto_libbitcoin_crypto_base_la_SOURCES = \
   crypto/sha512.cpp \
   crypto/sha512.h \
   crypto/siphash.cpp \
-  crypto/siphash.h
+  crypto/siphash.h \
+  crypto/yespower/yespower.h \
+  crypto/yespower/yespower-opt.c \
+  crypto/yespower/sha256.c \
+  crypto/yespower/sha256.h \
+  crypto/yespower/sysendian.h \
+  crypto/yespower/insecure_memzero.h \
+  crypto/yespower-hash.h \
+  crypto/yespower-hash.cpp
 
 if USE_ASM
 crypto_libbitcoin_crypto_base_la_SOURCES += crypto/sha256_sse4.cpp
