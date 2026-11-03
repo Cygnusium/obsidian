@@ -1477,8 +1477,8 @@ CAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams)
     if (halvings >= 64)
         return 0;
 
-    CAmount nSubsidy = 450 * COIN;
-    // Subsidy is cut in half every 50,000 blocks to reach 45,000,000 OSD total supply.
+    CAmount nSubsidy = 10 * COIN;
+    // Subsidy starts at 10 OSD and is cut in half every 2,250,000 blocks (~2.14 years) for an exact maximum supply of 45,000,000 OSD (2,250,000 * 10 * 2 = 45,000,000).
     nSubsidy >>= halvings;
     return nSubsidy;
 }

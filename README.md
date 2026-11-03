@@ -42,9 +42,9 @@
 | **Base Sub-Unit** | **Sidian (sid)** | $1\text{ OSD} = 100{,}000{,}000\text{ Sidians}$ |
 | **Unit Hierarchy** | **OSD, mOSD, µOSD, Sidian** | Full native decimal precision |
 | **Block Target Spacing** | **30 seconds** | Rapid transaction confirmations |
-| **Initial Block Subsidy** | **450 OSD** | Generous initial yield for early network participants |
-| **Subsidy Halving Interval** | **50,000 blocks** | Halving era every ~17.36 days |
-| **Total Maximum Supply** | **45,000,000 OSD** | Exact geometric progression: $50{,}000 \times 450 \times 2$ |
+| **Initial Block Subsidy** | **10 OSD** | Sustainable initial yield for network participants |
+| **Subsidy Halving Interval** | **2,250,000 blocks** | Halving era every ~2.14 years |
+| **Total Maximum Supply** | **45,000,000 OSD** | Exact geometric progression: $2{,}250{,}000 \times 10 \times 2$ |
 | **Proof-of-Work Algorithm** | **Yespower 1.0 (Obsidian)** | Memory-hard ($N=2048, r=32$, 2MB RAM footprint per thread) |
 | **PoW Personalization Salt** | `"Obsidian"` | Prevents cross-chain hash replay and collision |
 | **Difficulty Algorithm** | **LWMA-1 (Zawy v8)** | Per-block real-time difficulty retargeting (45-block window) |
@@ -302,7 +302,7 @@ To develop apps, test transactions, or simulate network conditions instantly:
    ADDR=$(./src/obsidian-cli -regtest getnewaddress)
    # Mine 101 blocks to unlock coinbase maturity:
    ./src/obsidian-cli -regtest generatetoaddress 101 "$ADDR"
-   # Verify balance (450 OSD):
+   # Verify balance (10 OSD):
    ./src/obsidian-cli -regtest getbalance
    ```
 
