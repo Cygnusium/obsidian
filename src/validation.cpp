@@ -2843,14 +2843,6 @@ bool Chainstate::ActivateBestChainStep(BlockValidationState& state, CBlockIndex*
     const CBlockIndex* pindexOldTip = m_chain.Tip();
     const CBlockIndex* pindexFork = m_chain.FindFork(pindexMostWork);
 
-    // 51% Attack Defense: Reject deep chain reorganizations exceeding 100 blocks
-    static const int MAX_REORG_DEPTH = 100;
-    if (pindexOldTip && pindexFork && (pindexOldTip->nHeight - pindexFork->nHeight > MAX_REORG_DEPTH)) {
-        LogPrintf("WARNING: 51% attack mitigation triggered: Reorganization of %d blocks rejected (max allowed %d)\n",
-                  pindexOldTip->nHeight - pindexFork->nHeight, MAX_REORG_DEPTH);
-        return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "reorg-too-deep", "reorganization exceeds maximum allowed depth");
-    }
-
     // Disconnect active blocks which are no longer in the best chain.
     bool fBlocksDisconnected = false;
     DisconnectedBlockTransactions disconnectpool;

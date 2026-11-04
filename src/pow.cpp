@@ -27,7 +27,9 @@ unsigned int LWMASolvetimes(const CBlockIndex* pindexLast, const Consensus::Para
     int64_t sum_weighted_solvetimes = 0;
     const CBlockIndex* pindex = pindexLast;
 
+    // Walk backwards from most recent block (i = 1, weight = N) to oldest block in window (i = N, weight = 1)
     for (int64_t i = 1; i <= N; ++i) {
+        const int64_t weight = N - i + 1;
         arith_uint256 target;
         target.SetCompact(pindex->nBits);
         sum_target += target / N;
@@ -36,13 +38,18 @@ unsigned int LWMASolvetimes(const CBlockIndex* pindexLast, const Consensus::Para
         if (solvetime > 6 * T) solvetime = 6 * T;
         if (solvetime < -6 * T) solvetime = -6 * T;
 
-        sum_weighted_solvetimes += solvetime * i;
+        sum_weighted_solvetimes += solvetime * weight;
         pindex = pindex->pprev;
     }
 
-    if (sum_weighted_solvetimes < 1) sum_weighted_solvetimes = 1;
+    // Clamp minimum weighted solvetimes to k / 3 to cap single-block difficulty increases at 3x
+    const int64_t min_weighted_solvetimes = k / 3;
+    if (sum_weighted_solvetimes < min_weighted_solvetimes) {
+        sum_weighted_solvetimes = min_weighted_solvetimes;
+    }
 
-    arith_uint256 next_target = (sum_target * sum_weighted_solvetimes) / k;
+    // Divide by k before multiplying by sum_weighted_solvetimes to prevent 256-bit arith_uint256 overflow
+    arith_uint256 next_target = (sum_target / k) * sum_weighted_solvetimes;
 
     if (next_target > powLimit || next_target == 0) {
         next_target = powLimit;
@@ -62,7 +69,7 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     if (params.fPowAllowMinDifficultyBlocks)
     {
         // Special difficulty rule for testnet:
-        if (pblock->GetBlockTime() > pindexLast->GetBlockTime() + params.nPowTargetSpacing * 2)
+        if (pblock && pblock->GetBlockTime() > pindexLast->GetBlockTime() + params.nPowTargetSpacing * 2)
             return nProofOfWorkLimit;
         else
         {
@@ -73,7 +80,53 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
         }
     }
 
-    return LWMASolvetimes(pindexLast, params);
+    unsigned int nBitsRequired = LWMASolvetimes(pindexLast, params);
+
+    // Emergency Difficulty Adjuster (EDA):
+    // If a large hashrate burst leaves and no block is found for > 6 * T (3 minutes),
+    // progressively scale the target easier based on elapsed time so remaining CPU miners
+    // can recover the chain instead of getting stuck.
+    const int64_t T = params.nPowTargetSpacing;
+    if (pblock != nullptr && pblock->GetBlockTime() > pindexLast->GetBlockTime() + 6 * T) {
+        const int64_t extra_time = pblock->GetBlockTime() - pindexLast->GetBlockTime() - 6 * T;
+        const arith_uint256 powLimit = UintToArith256(params.powLimit);
+        arith_uint256 target;
+        target.SetCompact(nBitsRequired);
+
+        // Halve difficulty (double target) for every 10 * T (5 minutes) past the 6 * T threshold
+        const int64_t halving_steps = extra_time / (10 * T);
+        if (halving_steps > 0) {
+            if (halving_steps >= 64) {
+                target = powLimit;
+            } else {
+                for (int64_t s = 0; s < halving_steps; ++s) {
+                    if (target > (powLimit >> 1)) {
+                        target = powLimit;
+                        break;
+                    }
+                    target <<= 1;
+                }
+            }
+        }
+
+        // Smooth linear adjustment within each 10 * T window
+        const int64_t rem_time = extra_time % (10 * T);
+        if (target < powLimit && rem_time > 0) {
+            arith_uint256 delta = (target / (10 * T)) * rem_time;
+            if (target > powLimit - delta) {
+                target = powLimit;
+            } else {
+                target += delta;
+            }
+        }
+
+        if (target > powLimit || target == 0) {
+            target = powLimit;
+        }
+        return target.GetCompact();
+    }
+
+    return nBitsRequired;
 }
 
 unsigned int CalculateNextWorkRequired(const CBlockIndex* pindexLast, int64_t nFirstBlockTime, const Consensus::Params& params)

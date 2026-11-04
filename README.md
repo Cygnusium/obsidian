@@ -26,10 +26,10 @@
    Legacy chains with 10-minute (Bitcoin) or 2.5-minute (Litecoin) block intervals force merchants and consumers to wait up to an hour for transaction certainty. Obsidian features an optimized **30-second block target**, enabling near-instant transaction finality ideal for point-of-sale payments, microtransactions, and high-frequency digital commerce.
 2. **Democratized, ASIC-Resistant CPU Mining**:
    Centralized ASIC mining farms and FPGA cartels undermine true Satoshi-style decentralization. Obsidian deploys **Yespower 1.0** with a custom `"Obsidian"` personalization matrix. Requiring 2 MB of memory per thread, Yespower saturates on-die CPU L3 caches, neutralizing specialized hardware and enabling any standard computer or laptop to actively participate in consensus.
-3. **Advanced 51% Attack Resilience**:
-   Smaller proof-of-work networks are often vulnerable to hashrate-renting attacks. Obsidian solves this with a two-layer defense system:
-   - **LWMA-1 Per-Block Retargeting**: Responds to hashrate spikes within single-digit blocks, preventing timestamp manipulation and difficulty gaming.
-   - **Consensus Reorganization Guard (`MAX_REORG_DEPTH = 100`)**: Hard consensus rule strictly prohibiting reorganizations deeper than 100 blocks, permanently preventing deep history rewrites from rogue mining pools.
+3. **Hash-Hopping & Stall Resilience**:
+   Smaller proof-of-work networks are often vulnerable to sudden hashrate spikes and abandonments from rental pools. Obsidian solves this with a two-stage difficulty defense system:
+   - **LWMA-1 Per-Block Retargeting**: Linearly weights the most recent 45 blocks (giving the newest block weight 45 down to weight 1 for the oldest), responding to hashrate spikes within single-digit blocks while preventing timestamp manipulation.
+   - **Emergency Difficulty Adjuster (EDA)**: If a massive hashrate burst suddenly disconnects and no block is found for more than 3 minutes ($6 \times T$), target difficulty automatically scales down in real time so CPU miners never face a frozen chain.
 
 ---
 
@@ -47,8 +47,7 @@
 | **Total Maximum Supply** | **45,000,000 OSD** | Exact geometric progression: $2{,}250{,}000 \times 10 \times 2$ |
 | **Proof-of-Work Algorithm** | **Yespower 1.0 (Obsidian)** | Memory-hard ($N=2048, r=32$, 2MB RAM footprint per thread) |
 | **PoW Personalization Salt** | `"Obsidian"` | Prevents cross-chain hash replay and collision |
-| **Difficulty Algorithm** | **LWMA-1 (Zawy v8)** | Per-block real-time difficulty retargeting (45-block window) |
-| **51% Reorganization Limit** | **100 blocks** | Hard consensus rejection of reorgs $> 100$ blocks |
+| **Difficulty Algorithm** | **LWMA-1 (Zawy v8) + EDA** | Per-block real-time difficulty retargeting (45-block window) + anti-stall decay |
 | **Coinbase Maturity** | **100 blocks** | Standard security threshold for mined coins |
 | **Native Address Format** | **Bech32 Native SegWit** | Mainnet prefix: `osd1q...` |
 | **Testnet Address Format** | **Bech32 Native SegWit** | Testnet prefix: `tosd1q...` |
