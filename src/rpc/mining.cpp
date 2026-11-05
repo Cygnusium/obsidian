@@ -691,19 +691,24 @@ static RPCHelpMan getblocktemplate()
             nTransactionsUpdatedLastLP = nTransactionsUpdatedLast;
         }
 
+        const int64_t nTipTime = active_chain.Tip()->GetBlockTime();
+        const int64_t nTargetSpacing = chainman.GetParams().GetConsensus().nPowTargetSpacing;
+
         // Release lock while waiting
         LEAVE_CRITICAL_SECTION(cs_main);
         {
-            checktxtime = std::chrono::steady_clock::now() + std::chrono::minutes(1);
+            checktxtime = std::chrono::steady_clock::now() + std::chrono::seconds(15);
 
             WAIT_LOCK(g_best_block_mutex, lock);
             while (g_best_block == hashWatchedChain && IsRPCRunning())
             {
                 if (g_best_block_cv.wait_until(lock, checktxtime) == std::cv_status::timeout)
                 {
-                    // Timeout: Check transactions for update
+                    // Timeout: Check transactions for update or EDA difficulty adjustment
                     // without holding the mempool lock to avoid deadlocks
                     if (mempool.GetTransactionsUpdated() != nTransactionsUpdatedLastLP)
+                        break;
+                    if (TicksSinceEpoch<std::chrono::seconds>(GetAdjustedTime()) >= nTipTime + 6 * nTargetSpacing)
                         break;
                     checktxtime += std::chrono::seconds(10);
                 }

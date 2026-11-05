@@ -83,41 +83,25 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     unsigned int nBitsRequired = LWMASolvetimes(pindexLast, params);
 
     // Emergency Difficulty Adjuster (EDA):
-    // If a large hashrate burst leaves and no block is found for > 6 * T (3 minutes),
-    // progressively scale the target easier based on elapsed time so remaining CPU miners
-    // can recover the chain instead of getting stuck.
+    // If a large hashrate burst leaves and no block is found for >= 6 * T (3 minutes),
+    // progressively scale the target easier in discrete 2 * T (60-second) steps so
+    // remaining CPU miners can recover the chain without getting stuck, while keeping
+    // nBits constant within each 60-second window so miner nTime rolling stays valid.
     const int64_t T = params.nPowTargetSpacing;
-    if (pblock != nullptr && pblock->GetBlockTime() > pindexLast->GetBlockTime() + 6 * T) {
-        const int64_t extra_time = pblock->GetBlockTime() - pindexLast->GetBlockTime() - 6 * T;
+    if (pblock != nullptr && pblock->GetBlockTime() >= pindexLast->GetBlockTime() + 6 * T) {
+        const int64_t eda_steps = (pblock->GetBlockTime() - pindexLast->GetBlockTime() - 4 * T) / (2 * T);
         const arith_uint256 powLimit = UintToArith256(params.powLimit);
         arith_uint256 target;
         target.SetCompact(nBitsRequired);
 
-        // Halve difficulty (double target) for every 10 * T (5 minutes) past the 6 * T threshold
-        const int64_t halving_steps = extra_time / (10 * T);
-        if (halving_steps > 0) {
-            if (halving_steps >= 64) {
-                target = powLimit;
-            } else {
-                for (int64_t s = 0; s < halving_steps; ++s) {
-                    if (target > (powLimit >> 1)) {
-                        target = powLimit;
-                        break;
-                    }
-                    target <<= 1;
-                }
-            }
-        }
-
-        // Smooth linear adjustment within each 10 * T window
-        const int64_t rem_time = extra_time % (10 * T);
-        if (target < powLimit && rem_time > 0) {
-            arith_uint256 delta = (target / (10 * T)) * rem_time;
+        // Increase target by 25% (target += target >> 2) for each 2 * T (60-second) step
+        for (int64_t s = 0; s < eda_steps; ++s) {
+            arith_uint256 delta = target >> 2;
             if (target > powLimit - delta) {
                 target = powLimit;
-            } else {
-                target += delta;
+                break;
             }
+            target += delta;
         }
 
         if (target > powLimit || target == 0) {

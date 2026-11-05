@@ -48,7 +48,7 @@
 | **Proof-of-Work Algorithm** | **Yespower 1.0 (Obsidian)** | Memory-hard ($N=2048, r=32$, 2MB RAM footprint per thread) |
 | **PoW Personalization Salt** | `"Obsidian"` | Prevents cross-chain hash replay and collision |
 | **Difficulty Algorithm** | **LWMA-1 (Zawy v8) + EDA** | Per-block real-time difficulty retargeting (45-block window) + anti-stall decay |
-| **Coinbase Maturity** | **100 blocks** | Standard security threshold for mined coins |
+| **Coinbase Maturity** | **6 blocks** | Fast maturity threshold for mined coins (~3 minutes) |
 | **Native Address Format** | **Bech32 Native SegWit** | Mainnet prefix: `osd1q...` |
 | **Testnet Address Format** | **Bech32 Native SegWit** | Testnet prefix: `tosd1q...` |
 | **Regtest Address Format** | **Bech32 Native SegWit** | Regtest prefix: `rosd1q...` |
@@ -279,9 +279,9 @@ For production mining, you can use any modern Yespower-capable miner (such as `c
    rpcport=18832
    ```
 
-2. **Launch cpuminer-opt**:
+2. **Launch cpuminer-opt** (note `--param-key=Obsidian` is required for Obsidian's Yespower personalization salt):
    ```bash
-   cpuminer -a yespower -o http://127.0.0.1:18832 -u mineruser -p minerpass --coinbase-addr=osd1qYourPayoutAddress -t $(nproc)
+   cpuminer -a yespower --param-key=Obsidian -o http://127.0.0.1:18832 -u mineruser -p minerpass --coinbase-addr=osd1qYourPayoutAddress -t $(nproc)
    ```
 
 ---
@@ -299,8 +299,8 @@ To develop apps, test transactions, or simulate network conditions instantly:
    ```bash
    ./src/obsidian-cli -regtest createwallet "devwallet"
    ADDR=$(./src/obsidian-cli -regtest getnewaddress)
-   # Mine 101 blocks to unlock coinbase maturity:
-   ./src/obsidian-cli -regtest generatetoaddress 101 "$ADDR"
+   # Mine 7 blocks to unlock coinbase maturity (6 confirmations):
+   ./src/obsidian-cli -regtest generatetoaddress 7 "$ADDR"
    # Verify balance (10 OSD):
    ./src/obsidian-cli -regtest getbalance
    ```
